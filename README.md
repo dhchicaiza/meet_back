@@ -330,6 +330,489 @@ npm run preview
 
 ---
 
+## 📡 API Documentation
+
+### Base URL
+- **Development:** `http://localhost:3000/api`
+- **Production:** `https://meet-api.onrender.com/api`
+
+### Authentication
+Most endpoints require a JWT token in the Authorization header:
+```
+Authorization: Bearer <your_jwt_token>
+```
+
+### Response Format
+All responses follow this format:
+```json
+{
+  "success": true/false,
+  "data": { ... } or null,
+  "message": "Optional message"
+}
+```
+
+### Error Format
+```json
+{
+  "success": false,
+  "error": {
+    "message": "Error description",
+    "code": "ERROR_CODE"
+  }
+}
+```
+
+---
+
+### Authentication Endpoints
+
+#### Sign Up (H1)
+**POST** `/api/auth/signup`
+
+Register a new user account.
+
+**Request Body:**
+```json
+{
+  "firstName": "John",
+  "lastName": "Doe",
+  "age": 25,
+  "email": "john@example.com",
+  "password": "SecurePass123!",
+  "confirmPassword": "SecurePass123!"
+}
+```
+
+**Validation Rules:**
+- First Name & Last Name: 2-50 characters, letters only
+- Age: ≥ 13
+- Email: Valid RFC 5322 format
+- Password: ≥8 characters with 1 uppercase, 1 lowercase, 1 number, 1 special char
+
+**Response:** `201 Created`
+```json
+{
+  "success": true,
+  "data": {
+    "id": "uuid-here"
+  },
+  "message": "Account created successfully"
+}
+```
+
+**Errors:**
+- `400` - Validation errors
+- `409` - Email already registered
+- `429` - Too many signup attempts (5 per hour)
+
+---
+
+#### Login (H2)
+**POST** `/api/auth/login`
+
+Authenticate with email and password.
+
+**Request Body:**
+```json
+{
+  "email": "john@example.com",
+  "password": "SecurePass123!"
+}
+```
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "token": "jwt.token.here",
+    "user": {
+      "id": "uuid",
+      "firstName": "John",
+      "lastName": "Doe",
+      "email": "john@example.com",
+      "age": 25,
+      "provider": "email",
+      "createdAt": "2025-01-01T00:00:00.000Z",
+      "updatedAt": "2025-01-01T00:00:00.000Z"
+    }
+  },
+  "message": "Login successful"
+}
+```
+
+**Errors:**
+- `401` - Invalid credentials
+- `423` - Account locked (after 5 failed attempts)
+- `429` - Too many login attempts (5 per 10 min)
+
+---
+
+#### OAuth Login (H2)
+**POST** `/api/auth/oauth`
+
+Login or register via Google/Facebook OAuth.
+
+**Request Body:**
+```json
+{
+  "provider": "google",
+  "providerId": "google-user-id",
+  "email": "john@example.com",
+  "firstName": "John",
+  "lastName": "Doe"
+}
+```
+
+**Response:** `200 OK` (same as login)
+
+---
+
+#### Logout (H2)
+**POST** `/api/auth/logout`
+
+🔒 **Protected Route**
+
+Logout current user (client-side handled, server logs event).
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": null,
+  "message": "Logout successful"
+}
+```
+
+---
+
+#### Forgot Password (H3)
+**POST** `/api/auth/forgot-password`
+
+Request password reset link.
+
+**Request Body:**
+```json
+{
+  "email": "john@example.com"
+}
+```
+
+**Response:** `202 Accepted`
+```json
+{
+  "success": true,
+  "data": null,
+  "message": "If an account exists with this email, a password reset link has been sent"
+}
+```
+
+**Notes:**
+- Always returns 202 to prevent email enumeration
+- Reset token valid for 1 hour
+- Token is single-use only
+- Rate limited: 3 attempts per 15 min
+
+---
+
+#### Reset Password (H3)
+**POST** `/api/auth/reset-password`
+
+Reset password using token from email.
+
+**Request Body:**
+```json
+{
+  "token": "reset-token-from-email",
+  "password": "NewSecurePass123!",
+  "confirmPassword": "NewSecurePass123!"
+}
+```
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": null,
+  "message": "Password reset successful"
+}
+```
+
+**Errors:**
+- `400` - Invalid/expired/used token
+- `400` - Password validation error
+
+---
+
+### User Endpoints
+
+#### Get Current Profile
+**GET** `/api/users/me`
+
+🔒 **Protected Route**
+
+Get current authenticated user profile.
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "id": "uuid",
+    "firstName": "John",
+    "lastName": "Doe",
+    "email": "john@example.com",
+    "age": 25,
+    "provider": "email",
+    "createdAt": "2025-01-01T00:00:00.000Z",
+    "updatedAt": "2025-01-01T00:00:00.000Z"
+  }
+}
+```
+
+---
+
+#### Update Profile (H4)
+**PUT** `/api/users/me`
+
+🔒 **Protected Route**
+
+Update user profile information.
+
+**Request Body:** (all fields optional)
+```json
+{
+  "firstName": "John",
+  "lastName": "Smith",
+  "age": 26,
+  "email": "john.smith@example.com"
+}
+```
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "id": "uuid",
+    "firstName": "John",
+    "lastName": "Smith",
+    "age": 26,
+    "email": "john.smith@example.com",
+    "provider": "email",
+    "createdAt": "2025-01-01T00:00:00.000Z",
+    "updatedAt": "2025-01-02T00:00:00.000Z"
+  },
+  "message": "Profile updated successfully"
+}
+```
+
+**Errors:**
+- `400` - Validation error
+- `409` - Email already in use
+
+---
+
+### Meeting Endpoints
+
+#### Create Meeting (H5)
+**POST** `/api/meetings`
+
+🔒 **Protected Route**
+
+Create a new video conference meeting.
+
+**Request Body:** (all fields optional)
+```json
+{
+  "maxParticipants": 10
+}
+```
+
+**Response:** `201 Created`
+```json
+{
+  "success": true,
+  "data": {
+    "id": "meeting-uuid",
+    "createdBy": "user-uuid",
+    "createdAt": "2025-01-01T00:00:00.000Z",
+    "status": "active",
+    "participants": [],
+    "maxParticipants": 10,
+    "participantCount": 0,
+    "canJoin": true
+  },
+  "message": "Meeting created successfully"
+}
+```
+
+**Notes:**
+- Meeting ID can be shared via link: `/meeting/:id`
+- Max participants: 2-10 (default: 10)
+
+---
+
+#### Get Meeting by ID
+**GET** `/api/meetings/:id`
+
+🔒 **Protected Route**
+
+Get meeting information by ID.
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "id": "meeting-uuid",
+    "createdBy": "user-uuid",
+    "createdAt": "2025-01-01T00:00:00.000Z",
+    "status": "active",
+    "participants": [
+      {
+        "userId": "user-uuid",
+        "joinedAt": "2025-01-01T00:05:00.000Z",
+        "active": true
+      }
+    ],
+    "maxParticipants": 10,
+    "participantCount": 1,
+    "canJoin": true
+  }
+}
+```
+
+**Errors:**
+- `404` - Meeting not found
+
+---
+
+#### Get My Meetings
+**GET** `/api/meetings`
+
+🔒 **Protected Route**
+
+Get all meetings created by current user.
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "meeting-uuid-1",
+      "createdBy": "user-uuid",
+      "createdAt": "2025-01-01T00:00:00.000Z",
+      "status": "active",
+      "participants": [],
+      "maxParticipants": 10,
+      "participantCount": 0,
+      "canJoin": true
+    }
+  ]
+}
+```
+
+---
+
+#### Join Meeting (Sprint 2)
+**POST** `/api/meetings/:id/join`
+
+🔒 **Protected Route**
+
+Join an existing meeting.
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "id": "meeting-uuid",
+    "createdBy": "creator-uuid",
+    "createdAt": "2025-01-01T00:00:00.000Z",
+    "status": "active",
+    "participants": [
+      {
+        "userId": "your-user-uuid",
+        "joinedAt": "2025-01-01T00:10:00.000Z",
+        "active": true
+      }
+    ],
+    "maxParticipants": 10,
+    "participantCount": 1,
+    "canJoin": true
+  },
+  "message": "Joined meeting successfully"
+}
+```
+
+**Errors:**
+- `400` - Meeting ended
+- `400` - Meeting is full
+- `404` - Meeting not found
+
+---
+
+#### Leave Meeting (Sprint 2)
+**POST** `/api/meetings/:id/leave`
+
+🔒 **Protected Route**
+
+Leave a meeting.
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": null,
+  "message": "Left meeting successfully"
+}
+```
+
+---
+
+#### End Meeting
+**POST** `/api/meetings/:id/end`
+
+🔒 **Protected Route** (Creator only)
+
+End a meeting (only creator can end).
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": null,
+  "message": "Meeting ended successfully"
+}
+```
+
+**Errors:**
+- `400` - Only meeting creator can end the meeting
+- `404` - Meeting not found
+
+---
+
+### Health Check
+
+#### Server Status
+**GET** `/health`
+
+Check if server is running.
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "message": "Server is running",
+  "timestamp": "2025-01-01T00:00:00.000Z"
+}
+```
+
+---
+
 ## 📦 Entregas por Sprint
 
 ### Documentos Requeridos
