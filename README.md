@@ -813,6 +813,205 @@ Check if server is running.
 
 ---
 
+### Chat Endpoints (Sprint 2)
+
+#### Get Chat Messages
+**GET** `/api/chat/:meetingId`
+
+🔒 **Protected Route**
+
+Get chat message history for a meeting.
+
+**Query Parameters:**
+- `limit` (optional): Number of messages to retrieve (default: 100)
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "message-uuid",
+      "meetingId": "meeting-uuid",
+      "userId": "user-uuid",
+      "userName": "John Doe",
+      "message": "Hello everyone!",
+      "timestamp": "2025-01-01T00:10:00.000Z",
+      "type": "text"
+    }
+  ]
+}
+```
+
+---
+
+#### Delete Chat Messages
+**DELETE** `/api/chat/:meetingId`
+
+🔒 **Protected Route**
+
+Delete all chat messages for a meeting (admin only).
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": null,
+  "message": "Chat messages deleted successfully"
+}
+```
+
+---
+
+### Summary Endpoints (Sprint 3)
+
+#### Generate Meeting Summary
+**POST** `/api/summaries/:meetingId`
+
+🔒 **Protected Route**
+
+Generate AI-powered summary of meeting chat.
+
+**Request Body:**
+```json
+{
+  "participants": ["user-uuid-1", "user-uuid-2"],
+  "duration": 3600
+}
+```
+
+**Response:** `201 Created`
+```json
+{
+  "success": true,
+  "data": {
+    "id": "summary-uuid",
+    "meetingId": "meeting-uuid",
+    "createdAt": "2025-01-01T01:00:00.000Z",
+    "summary": "The team discussed the Q1 project timeline and assigned tasks for the upcoming sprint.",
+    "keyPoints": [
+      "Sprint planning completed for Q1",
+      "Backend API endpoints finalized",
+      "Frontend integration scheduled for next week"
+    ],
+    "participants": ["user-uuid-1", "user-uuid-2"],
+    "duration": 3600,
+    "messageCount": 45
+  },
+  "message": "Summary generated successfully"
+}
+```
+
+**Notes:**
+- Requires OpenAI API key configured
+- Summary is generated from chat message history
+- Uses GPT-4 for intelligent summarization
+
+---
+
+#### Get Meeting Summary
+**GET** `/api/summaries/:meetingId`
+
+🔒 **Protected Route**
+
+Retrieve existing meeting summary.
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "id": "summary-uuid",
+    "meetingId": "meeting-uuid",
+    "createdAt": "2025-01-01T01:00:00.000Z",
+    "summary": "The team discussed...",
+    "keyPoints": ["Point 1", "Point 2"],
+    "participants": ["user-uuid-1"],
+    "duration": 3600,
+    "messageCount": 45
+  }
+}
+```
+
+---
+
+### Socket.io Real-Time Events (Sprint 2, 3, 4)
+
+#### Connection
+Connect to Socket.io server with JWT authentication:
+
+```javascript
+import io from 'socket.io-client';
+
+const socket = io('http://localhost:3000', {
+  auth: {
+    token: 'your_jwt_token_here'
+  }
+});
+```
+
+#### Chat Events
+
+**Client → Server:**
+- `join-meeting` - Join a meeting room
+- `leave-meeting` - Leave a meeting room
+- `send-message` - Send chat message
+- `typing` - Indicate typing status
+- `get-participants` - Request participants list
+
+**Server → Client:**
+- `joined-meeting` - Join confirmation
+- `user-joined` - New user joined
+- `user-left` - User left
+- `chat-message` - New message received
+- `user-typing` - User is typing
+- `participants-list` - Current participants
+
+#### WebRTC Events (Sprint 3 & 4)
+
+**Client → Server:**
+- `webrtc-signal` - Send WebRTC offer/answer/ICE candidate
+- `media-control` - Toggle audio/video
+
+**Server → Client:**
+- `webrtc-signal` - Receive WebRTC signals
+- `user-media-changed` - User toggled media
+
+**Full Socket.io documentation:** See [SOCKET_IO_EVENTS.md](./SOCKET_IO_EVENTS.md)
+
+---
+
+### WebRTC Configuration (Sprint 3 & 4)
+
+#### STUN/TURN Servers
+Configure in `.env`:
+
+```env
+STUN_SERVER_1_HOST=0.0.0.0
+STUN_SERVER_1_PORT=3478
+STUN_SERVER_2_HOST=0.0.0.0
+STUN_SERVER_2_PORT=3479
+
+TURN_SERVER_URL=turn:your-turn-server.com:3478
+TURN_USERNAME=your_turn_username
+TURN_CREDENTIAL=your_turn_credential
+```
+
+#### Audio Streaming (Sprint 3)
+- Peer-to-peer audio using WebRTC
+- STUN server for NAT traversal
+- Mute/unmute microphone controls
+- Real-time audio quality indicators
+
+#### Video Streaming (Sprint 4)
+- Peer-to-peer video using WebRTC
+- Second STUN server for video optimization
+- Enable/disable camera controls
+- Grid layout for multiple participants (2-10)
+- Adaptive bitrate based on network conditions
+
+---
+
 ## 📦 Entregas por Sprint
 
 ### Documentos Requeridos

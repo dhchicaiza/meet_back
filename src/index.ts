@@ -1,20 +1,26 @@
 import express, { Application } from 'express';
+import { createServer } from 'http';
 import cors from 'cors';
 import helmet from 'helmet';
 import dotenv from 'dotenv';
 import { initializeFirebase } from './config/firebase';
 import { initializeEmailTransporter } from './config/email';
+import { initializeSocketIO } from './config/socket';
+import { registerSocketHandlers } from './services/socket.service';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 import { logger } from './utils/logger';
 import authRoutes from './routes/auth.routes';
 import usersRoutes from './routes/users.routes';
 import meetingsRoutes from './routes/meetings.routes';
+import chatRoutes from './routes/chat.routes';
+import summaryRoutes from './routes/summary.routes';
 
 // Load environment variables
 dotenv.config();
 
 // Initialize Express app
 const app: Application = express();
+const httpServer = createServer(app);
 const PORT = process.env.PORT || 3000;
 
 /**
@@ -27,6 +33,10 @@ function initializeServices(): void {
 
     // Initialize Email transporter
     initializeEmailTransporter();
+
+    // Initialize Socket.io
+    const io = initializeSocketIO(httpServer);
+    registerSocketHandlers(io);
 
     logger.info('All services initialized successfully');
   } catch (error) {
@@ -80,6 +90,8 @@ function configureRoutes(): void {
   app.use('/api/auth', authRoutes);
   app.use('/api/users', usersRoutes);
   app.use('/api/meetings', meetingsRoutes);
+  app.use('/api/chat', chatRoutes);
+  app.use('/api/summaries', summaryRoutes);
 
   // 404 handler (must be after all routes)
   app.use(notFoundHandler);
@@ -89,12 +101,13 @@ function configureRoutes(): void {
 }
 
 /**
- * Start the Express server
+ * Start the HTTP/Socket.io server
  */
 function startServer(): void {
-  app.listen(PORT, () => {
+  httpServer.listen(PORT, () => {
     logger.info(`Server is running on port ${PORT}`);
     logger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);
+    logger.info('Socket.io server is ready');
   });
 }
 
